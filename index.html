@@ -250,12 +250,40 @@
           </div>
 
           <div class="card">
+            <div class="card-head"><h2>Today's Challenges 🎯</h2></div>
+            <div class="challenge-goal" id="challengeStepGoal">League step goal: …</div>
+            <ul class="challenge-list" id="challengeList"></ul>
+            <p class="muted">Tick off what you've done today to earn points set by your clan leader.</p>
+          </div>
+
+          <div class="card">
             <div class="card-head">
               <h2>Leaderboard</h2>
               <button class="ghost-btn" id="refreshBoardBtn">↻ Refresh</button>
             </div>
             <ul class="board-list" id="boardList"><li class="log-empty">Loading…</li></ul>
-            <div class="board-legend muted">+10 hitting step goal · +5 gym · +5 both-day bonus 🔥</div>
+            <div class="board-legend muted">Points are set by your clan leader 👑</div>
+          </div>
+
+          <div class="card" id="rulesCard">
+            <div class="card-head"><h2>Clan Rules</h2><span class="muted" id="rulesRole"></span></div>
+            <!-- Members: read-only view -->
+            <div id="rulesView"></div>
+            <!-- Leader: editor -->
+            <div id="rulesEditor" style="display:none">
+              <div class="two">
+                <label class="fld"><span>League step goal</span><input id="ruleStepGoal" type="number" inputmode="numeric" placeholder="10000" /></label>
+                <label class="fld"><span>Points for step goal</span><input id="ruleStepPoints" type="number" inputmode="numeric" placeholder="10" /></label>
+              </div>
+              <h3 class="rules-subhead">Daily tasks &amp; their points</h3>
+              <ul class="rule-task-list" id="ruleTaskList"></ul>
+              <div class="add-task-row">
+                <input id="newTaskText" placeholder="New task, e.g. Run 5 km 🏃" maxlength="40" />
+                <input id="newTaskPoints" type="number" inputmode="numeric" placeholder="pts" />
+                <button class="ghost-btn" id="addTaskBtn">+ Add</button>
+              </div>
+              <button class="primary-btn full" id="saveRulesBtn">💾 Save rules for the clan</button>
+            </div>
           </div>
 
           <div class="card">

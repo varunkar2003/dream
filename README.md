@@ -95,10 +95,35 @@ league table.
 Each friend installs the **same** deployed app (same URL), opens the **League** tab,
 taps **Join**, enters their name + your **league code**. That's it — no account, no signup.
 
-### Scoring
-- Hit your **step goal** → **+10 pts** 🎯
-- **Gym done** (any goal containing "gym/workout/train" checked) → **+5 pts** 🏋️
-- Both in one day → **+5 bonus** 🔥 · the board also shows each player's goal-hit streak
+### Scoring — set by the clan leader 👑
+Whoever **creates** the league is the **clan leader**. In the League tab they get a
+**Clan Rules** editor where they set:
+- the **league step goal** and how many **points** hitting it is worth, and
+- a list of **daily tasks** (e.g. "Go to the gym", "Run 5 km"), each with its own points.
+
+Members see those rules and a **"Today's Challenges"** checklist they tick off. Everyone's
+points are computed from the leader's rules, so when the leader changes them, scores
+recompute for everyone. The board also shows each player's goal-hit **streak** 🔥 and a 👑 on the leader.
+
+### Required extra setup (run once, after the first SQL)
+This rules feature needs one more migration. In the Supabase **SQL Editor**, run:
+
+```sql
+-- Clan rules, set by the league creator
+create table if not exists public.leagues (
+  league_code text primary key,
+  name        text,
+  leader_id   text not null,
+  rules       jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz default now()
+);
+alter table public.leagues enable row level security;
+create policy "leagues_open" on public.leagues for all using (true) with check (true);
+alter publication supabase_realtime add table public.leagues;
+
+-- Track which league tasks each member completed per day
+alter table public.daily_stats add column if not exists tasks_done jsonb default '[]'::jsonb;
+```
 
 > **Security note:** with the open policy above, anyone who has your anon key + league
 > code could write to the table. For a private friends group that's fine. If you ever want

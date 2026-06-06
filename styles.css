@@ -315,6 +315,28 @@ body {
 .board-pts small { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 2px; }
 .board-legend { margin-top: 12px; font-size: 12px; }
 
+/* challenges checklist */
+.challenge-goal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
+.challenge-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.challenge-item { display: flex; align-items: center; gap: 12px; background: var(--bg-2); border: 1px solid var(--line); padding: 12px 14px; border-radius: 12px; cursor: pointer; transition: .15s; }
+.challenge-item:hover { border-color: var(--accent); }
+.challenge-item.done { opacity: .6; }
+.challenge-item.done .goal-name { text-decoration: line-through; }
+.challenge-item.done .goal-check { background: var(--accent); border-color: var(--accent); }
+.ch-pts { font-weight: 800; color: var(--accent); font-size: 13px; }
+
+/* clan rules editor */
+.rules-subhead { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 8px; }
+.rule-task-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.rule-task { display: flex; align-items: center; gap: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
+.rule-task .rt-text { flex: 1; }
+.rule-task .rt-pts { font-weight: 800; color: var(--accent); }
+.rule-task .rt-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+.rule-task .rt-del:hover { color: var(--danger); }
+.add-task-row { display: grid; grid-template-columns: 1fr 70px auto; gap: 8px; margin-bottom: 10px; }
+.add-task-row input { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--text); font: inherit; font-size: 14px; }
+.add-task-row input:focus { outline: none; border-color: var(--accent-2); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .step-stats { gap: 8px; }

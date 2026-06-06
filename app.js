@@ -876,6 +876,8 @@ el('leaveLeagueBtn').addEventListener('click', () => Social.leaveLeague());
 el('refreshBoardBtn').addEventListener('click', () => Social.refreshBoard());
 el('syncNowBtn').addEventListener('click', () => Social.syncNow());
 el('shareLeagueBtn').addEventListener('click', () => Social.shareLeague());
+el('addTaskBtn').addEventListener('click', () => Social.addTask());
+el('saveRulesBtn').addEventListener('click', () => Social.saveRules());
 
 // Profile
 el('saveProfile').addEventListener('click', saveProfileForm);
@@ -896,6 +898,7 @@ el('resetAll').addEventListener('click', () => {
    ============================================================ */
 window.Social = (function () {
   let client = null, channel = null, syncTimer = null;
+  let rules = null, leaderId = null, editTasks = [];
 
   function configured() {
     const c = window.DREAM_SUPABASE;
@@ -922,24 +925,48 @@ window.Social = (function () {
     return s().playerId;
   }
   function inLeague() { return !!s().leagueCode; }
+  function isLeader() { return !!leaderId && s().playerId === leaderId; }
 
-  /* ---- points + my row ---- */
-  function computePoints(goalHit, gymDone) {
-    return (goalHit ? 10 : 0) + (gymDone ? 5 : 0) + (goalHit && gymDone ? 5 : 0);
+  /* ---- rules (set by the clan leader) ---- */
+  function defaultRules() {
+    return {
+      stepGoal: 10000, stepPoints: 10,
+      tasks: [
+        { id: 'gym',   text: 'Go to the gym 🏋️',     points: 5 },
+        { id: 'water', text: 'Drink 3L of water 💧',  points: 3 },
+        { id: 'sleep', text: '8h sleep 😴',            points: 2 }
+      ]
+    };
   }
+  // Points for one day's row, computed from the league's rules
+  function rowPoints(r, rl) {
+    if (!rl) return r.points || 0;
+    let p = ((r.steps || 0) >= rl.stepGoal ? rl.stepPoints : 0);
+    const done = Array.isArray(r.tasks_done) ? r.tasks_done : [];
+    (rl.tasks || []).forEach(t => { if (done.includes(t.id)) p += (+t.points || 0); });
+    return p;
+  }
+  // Which league tasks I've ticked off today (stored locally + synced)
+  function myTasksToday() {
+    const d = getDay(TODAY);
+    if (!Array.isArray(d.leagueTasks)) d.leagueTasks = [];
+    return d.leagueTasks;
+  }
+
   function myTodayRow() {
-    const goal = state.stepGoal || 8000;
+    const rl = rules || defaultRules();
     const steps = stepsOf(TODAY);
-    const goalHit = steps >= goal;
-    const gymDone = isGymDone(TODAY);
+    const done = myTasksToday();
     return {
       player_id: ensurePlayerId(),
       date: TODAY,
       league_code: s().leagueCode,
       name: s().name || 'Player',
-      steps, step_goal: goal,
-      goal_hit: goalHit, gym_done: gymDone,
-      points: computePoints(goalHit, gymDone),
+      steps, step_goal: rl.stepGoal,
+      goal_hit: steps >= rl.stepGoal,
+      gym_done: done.includes('gym'),
+      tasks_done: done,
+      points: rowPoints({ steps, tasks_done: done }, rl),
       updated_at: new Date().toISOString()
     };
   }
@@ -960,27 +987,42 @@ window.Social = (function () {
     syncTimer = setTimeout(syncNow, 2500);
   }
 
+  /* ---- rules load/save ---- */
+  async function loadRules() {
+    const c = ensureClient();
+    if (!c || !inLeague()) return null;
+    const { data, error } = await c.from('leagues').select('*').eq('league_code', s().leagueCode).maybeSingle();
+    if (error) console.warn('Rules load error:', error);
+    rules = data ? data.rules : null;
+    leaderId = data ? data.leader_id : null;
+    return rules;
+  }
+
   /* ---- leaderboard ---- */
   async function refreshBoard() {
     const c = ensureClient();
     if (!c || !inLeague()) return;
+    if (!rules) await loadRules();
     const { data, error } = await c.from('daily_stats').select('*').eq('league_code', s().leagueCode);
     if (error) { renderBoardError(error.message); return; }
     renderBoard(aggregate(data || []));
   }
   function aggregate(rows) {
+    const rl = rules;
     const byPlayer = {};
     rows.forEach(r => {
       const p = byPlayer[r.player_id] || (byPlayer[r.player_id] = { id: r.player_id, name: r.name || 'Player', total: 0, days: {} });
-      p.total += (r.points || 0);
+      r._hit = rl ? ((r.steps || 0) >= rl.stepGoal) : !!r.goal_hit;
+      p.total += rowPoints(r, rl);
       if (r.name) p.name = r.name;
       p.days[r.date] = r;
     });
     const list = Object.values(byPlayer).map(p => {
       const today = p.days[TODAY];
       p.todaySteps = today ? today.steps : 0;
-      p.todayHit = today ? today.goal_hit : false;
-      p.todayGym = today ? today.gym_done : false;
+      p.todayHit = today ? today._hit : false;
+      p.todayTasks = today && Array.isArray(today.tasks_done) ? today.tasks_done.length : 0;
+      p.taskTotal = rl ? (rl.tasks || []).length : 0;
       p.streak = goalStreak(p.days);
       return p;
     });
@@ -989,10 +1031,10 @@ window.Social = (function () {
   }
   function goalStreak(days) {
     let streak = 0, cur = new Date();
-    if (!(days[ymd(cur)] && days[ymd(cur)].goal_hit)) cur.setDate(cur.getDate() - 1);
+    if (!(days[ymd(cur)] && days[ymd(cur)]._hit)) cur.setDate(cur.getDate() - 1);
     for (let i = 0; i < 400; i++) {
       const key = ymd(cur);
-      if (days[key] && days[key].goal_hit) { streak++; cur.setDate(cur.getDate() - 1); }
+      if (days[key] && days[key]._hit) { streak++; cur.setDate(cur.getDate() - 1); }
       else break;
     }
     return streak;
@@ -1018,15 +1060,107 @@ window.Social = (function () {
     hide('leagueSetup'); hide('leagueJoin'); show('leagueBoard');
     el('leagueCodeLabel').textContent = s().leagueCode;
     el('leagueMyName').textContent = s().name || 'Player';
-    updateMyTodayStatus();
-    refreshBoard();
+    enterBoard();
     subscribeRealtime();
   }
-  function updateMyTodayStatus() {
-    const goal = state.stepGoal || 8000, steps = stepsOf(TODAY);
-    const e = el('myTodayStatus'); if (!e) return;
-    e.textContent = steps >= goal ? 'goal hit ✅' : steps.toLocaleString() + ' / ' + goal.toLocaleString() + ' steps';
+  async function enterBoard() {
+    await loadRules();
+    renderChallenges();
+    renderRules();
+    refreshBoard();
+    updateMyTodayStatus();
   }
+  function updateMyTodayStatus() {
+    const rl = rules || defaultRules(), steps = stepsOf(TODAY);
+    const e = el('myTodayStatus'); if (!e) return;
+    e.textContent = steps >= rl.stepGoal ? 'goal hit ✅' : steps.toLocaleString() + ' / ' + rl.stepGoal.toLocaleString() + ' steps';
+  }
+
+  /* ---- today's challenges (member checklist) ---- */
+  function renderChallenges() {
+    const rl = rules || defaultRules();
+    const steps = stepsOf(TODAY);
+    const sg = el('challengeStepGoal');
+    if (sg) sg.innerHTML = `🎯 League step goal: <b>${rl.stepGoal.toLocaleString()}</b> steps — `
+      + (steps >= rl.stepGoal ? '✅ done' : '⬜ ' + steps.toLocaleString())
+      + ` <span class="ch-pts">+${rl.stepPoints}</span>`;
+    const done = myTasksToday();
+    const ul = el('challengeList'); if (!ul) return; ul.innerHTML = '';
+    (rl.tasks || []).forEach(t => {
+      const isDone = done.includes(t.id);
+      const li = document.createElement('li');
+      li.className = 'challenge-item' + (isDone ? ' done' : '');
+      li.innerHTML = `<div class="goal-check">${isDone ? '✓' : ''}</div>
+        <span class="goal-name">${escapeHtml(t.text)}</span>
+        <span class="ch-pts">+${t.points}</span>`;
+      li.addEventListener('click', () => toggleTask(t.id));
+      ul.appendChild(li);
+    });
+    if (!(rl.tasks || []).length) ul.innerHTML = '<li class="log-empty">Your clan leader hasn\'t added tasks yet.</li>';
+  }
+  function toggleTask(id) {
+    const done = myTasksToday();
+    const i = done.indexOf(id);
+    if (i >= 0) done.splice(i, 1); else done.push(id);
+    save();
+    renderChallenges();
+    syncNow();
+  }
+
+  /* ---- clan rules (leader editor / member view) ---- */
+  function renderRules() {
+    const rl = rules || defaultRules();
+    const leader = isLeader();
+    const role = el('rulesRole'); if (role) role.textContent = leader ? "You're the clan leader 👑" : 'Set by your clan leader';
+    const editor = el('rulesEditor'), view = el('rulesView');
+    if (!editor || !view) return;
+    if (leader) {
+      editor.style.display = ''; view.style.display = 'none';
+      el('ruleStepGoal').value = rl.stepGoal;
+      el('ruleStepPoints').value = rl.stepPoints;
+      editTasks = (rl.tasks || []).map(t => ({ ...t }));
+      renderRuleTaskList();
+    } else {
+      editor.style.display = 'none'; view.style.display = '';
+      let html = `<div class="calc-out"><div class="calc-row highlight"><span>🎯 ${rl.stepGoal.toLocaleString()} steps</span><b>+${rl.stepPoints}</b></div>`;
+      (rl.tasks || []).forEach(t => html += `<div class="calc-row"><span>${escapeHtml(t.text)}</span><b>+${t.points}</b></div>`);
+      html += '</div>';
+      view.innerHTML = html;
+    }
+  }
+  function renderRuleTaskList() {
+    const ul = el('ruleTaskList'); if (!ul) return; ul.innerHTML = '';
+    editTasks.forEach((t, i) => {
+      const li = document.createElement('li'); li.className = 'rule-task';
+      li.innerHTML = `<span class="rt-text">${escapeHtml(t.text)}</span><span class="rt-pts">+${t.points}</span><button class="rt-del" title="Remove">✕</button>`;
+      li.querySelector('.rt-del').addEventListener('click', () => { editTasks.splice(i, 1); renderRuleTaskList(); });
+      ul.appendChild(li);
+    });
+    if (!editTasks.length) ul.innerHTML = '<li class="log-empty">No tasks yet — add some below.</li>';
+  }
+  function addTask() {
+    const text = (el('newTaskText').value || '').trim();
+    const pts = parseInt(el('newTaskPoints').value, 10) || 0;
+    if (!text) { alert('Enter a task description.'); return; }
+    editTasks.push({ id: 't_' + Math.random().toString(36).slice(2, 7), text, points: pts });
+    el('newTaskText').value = ''; el('newTaskPoints').value = '';
+    renderRuleTaskList();
+  }
+  async function saveRules() {
+    if (!isLeader()) { alert('Only the clan leader can change the rules.'); return; }
+    const c = ensureClient(); if (!c) return;
+    const rl = {
+      stepGoal: parseInt(el('ruleStepGoal').value, 10) || 10000,
+      stepPoints: parseInt(el('ruleStepPoints').value, 10) || 0,
+      tasks: editTasks.map(t => ({ id: t.id, text: t.text, points: +t.points || 0 }))
+    };
+    const { error } = await c.from('leagues').update({ rules: rl, updated_at: new Date().toISOString() }).eq('league_code', s().leagueCode);
+    if (error) { alert('Could not save rules: ' + error.message); return; }
+    rules = rl;
+    renderChallenges(); renderRules(); syncNow();
+    alert('Rules updated for the whole clan! 🎉');
+  }
+
   function renderBoardError(msg) {
     el('boardList').innerHTML = `<li class="log-empty">Couldn't load leaderboard: ${escapeHtml(msg)}</li>`;
   }
@@ -1039,13 +1173,14 @@ window.Social = (function () {
       const me = p.id === s().playerId;
       const li = document.createElement('li');
       li.className = 'board-item' + (me ? ' me' : '');
-      const sub = (p.todayHit ? '✅ goal today' : '⬜ ' + p.todaySteps.toLocaleString() + ' steps')
-        + (p.todayGym ? ' · 🏋️' : '')
+      const crown = p.id === leaderId ? ' 👑' : '';
+      const sub = (p.todayHit ? '✅ goal' : '⬜ ' + p.todaySteps.toLocaleString() + ' steps')
+        + (p.taskTotal ? ` · ${p.todayTasks}/${p.taskTotal} tasks` : '')
         + (p.streak > 1 ? ' · 🔥' + p.streak : '');
       li.innerHTML =
         `<span class="board-rank">${medals[i] || (i + 1)}</span>
          <div class="board-who">
-           <span class="board-name">${escapeHtml(p.name)}${me ? ' (you)' : ''}</span>
+           <span class="board-name">${escapeHtml(p.name)}${crown}${me ? ' (you)' : ''}</span>
            <span class="board-sub">${sub}</span>
          </div>
          <span class="board-pts">${p.total}<small>pts</small></span>`;
@@ -1063,6 +1198,9 @@ window.Social = (function () {
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'daily_stats', filter: 'league_code=eq.' + s().leagueCode },
           () => refreshBoard())
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'leagues', filter: 'league_code=eq.' + s().leagueCode },
+          async () => { await loadRules(); renderChallenges(); renderRules(); refreshBoard(); })
         .subscribe();
     } catch (e) { /* polling will cover it */ }
   }
@@ -1077,36 +1215,49 @@ window.Social = (function () {
     for (let i = 0; i < 5; i++) out += A[Math.floor(Math.random() * A.length)];
     return out;
   }
-  function createLeague() {
+  async function createLeague() {
     const name = (el('leagueName').value || '').trim();
     if (!name) { alert('Enter your display name first.'); return; }
     s().name = name; s().leagueCode = genCode(); ensurePlayerId(); save();
-    syncNow(); renderView();
+    const c = ensureClient();
+    const rl = defaultRules();
+    if (c) {
+      const { error } = await c.from('leagues').upsert({
+        league_code: s().leagueCode, name: name + "'s clan",
+        leader_id: s().playerId, rules: rl, updated_at: new Date().toISOString()
+      });
+      if (error) alert('Could not create the clan (did you run the new SQL migration?):\n' + error.message);
+    }
+    rules = rl; leaderId = s().playerId;
+    await syncNow();
+    renderView();
   }
-  function joinLeague() {
+  async function joinLeague() {
     const name = (el('leagueName').value || '').trim();
     const code = (el('joinCode').value || '').trim().toUpperCase();
     if (!name) { alert('Enter your display name first.'); return; }
     if (!code) { alert('Enter a league code to join.'); return; }
     s().name = name; s().leagueCode = code; ensurePlayerId(); save();
-    syncNow(); renderView();
+    await loadRules();
+    await syncNow();
+    renderView();
   }
   function leaveLeague() {
     if (!confirm('Leave this league? Your score stays on the board but you stop syncing.')) return;
     unsubscribe();
-    s().leagueCode = ''; save();
+    s().leagueCode = ''; rules = null; leaderId = null; save();
     renderView();
   }
   function shareLeague() {
     const code = s().leagueCode;
-    const text = `Join my Dream fitness league! In the app: League → Join, enter code: ${code}`;
+    const text = `Join my Dream fitness clan! In the app: League → Join, enter code: ${code}`;
     if (navigator.share) navigator.share({ title: 'Dream League', text }).catch(() => {});
     else if (navigator.clipboard) { navigator.clipboard.writeText(code); alert('League code ' + code + ' copied!'); }
     else alert('Your league code: ' + code);
   }
 
   function init() {
-    if (configured() && inLeague()) { ensurePlayerId(); syncNow(); }
+    if (configured() && inLeague()) { ensurePlayerId(); loadRules().then(syncNow); }
     // Poll while the League tab is open so you see friends update live
     setInterval(() => {
       if (inLeague() && el('view-league').classList.contains('active')) refreshBoard();
@@ -1116,7 +1267,8 @@ window.Social = (function () {
   return {
     init, renderView, refreshBoard, syncNow,
     onSave: scheduleSync,
-    createLeague, joinLeague, leaveLeague, shareLeague
+    createLeague, joinLeague, leaveLeague, shareLeague,
+    addTask, saveRules
   };
 })();
 
