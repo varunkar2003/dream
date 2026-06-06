@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream · Your Gym Buddy</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- PWA: makes Dream installable on your phone's home screen -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0e1116" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Dream" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">💪</div>
+        <div>
+          <div class="brand-name">Dream</div>
+          <div class="brand-sub">your gym buddy</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-view="dashboard"><span>🏠</span> Today</button>
+        <button class="nav-btn" data-view="steps"><span>👟</span> Steps</button>
+        <button class="nav-btn" data-view="league"><span>🏆</span> League</button>
+        <button class="nav-btn" data-view="calendar"><span>📅</span> Calendar</button>
+        <button class="nav-btn" data-view="nutrition"><span>🍗</span> Calories &amp; Protein</button>
+        <button class="nav-btn" data-view="weight"><span>⚖️</span> Weight</button>
+        <button class="nav-btn" data-view="profile"><span>⚙️</span> Profile</button>
+      </nav>
+
+      <div class="streak-card">
+        <div class="streak-num" id="streakNum">0</div>
+        <div class="streak-label">day gym streak 🔥</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="hello" id="hello">Hey champ 👋</div>
+          <div class="date-today" id="dateToday"></div>
+        </div>
+        <div class="quote" id="quote"></div>
+      </header>
+
+      <!-- ================= DASHBOARD ================= -->
+      <section class="view active" id="view-dashboard">
+        <div class="reminder-banner" id="reminderBanner">
+          <div class="reminder-icon">🏋️</div>
+          <div class="reminder-text">
+            <strong>Time to hit your goals!</strong>
+            <span id="reminderSub">Did you go to the gym today? Tap your goal to check it off.</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-head">
+              <h2>Today's Goals</h2>
+              <button class="ghost-btn" id="addGoalBtn">+ Add goal</button>
+            </div>
+            <ul class="goal-list" id="goalList"></ul>
+            <div class="progress-wrap">
+              <div class="progress-bar"><div class="progress-fill" id="goalProgress"></div></div>
+              <span id="goalProgressLabel">0%</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Calories Today</h2></div>
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52" />
+                <circle class="ring-fg" id="calRing" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="ring-center">
+                <div class="ring-val" id="calNet">0</div>
+                <div class="ring-sub">net kcal</div>
+              </div>
+            </div>
+            <div class="mini-stats">
+              <div><span class="dot in"></span> In <b id="dashCalIn">0</b></div>
+              <div><span class="dot out"></span> Out <b id="dashCalOut">0</b></div>
+              <div><span class="dot pro"></span> Protein <b id="dashProtein">0g</b></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Steps</h2></div>
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52" />
+                <circle class="ring-fg" id="stepRing" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="ring-center">
+                <div class="ring-val" id="dashSteps">0</div>
+                <div class="ring-sub" id="dashStepGoalSub">/ 8,000</div>
+              </div>
+            </div>
+            <div class="mini-stats">
+              <div>🔥 <b id="dashStepKcal">0</b> kcal</div>
+              <div>📏 <b id="dashStepKm">0.0</b> km</div>
+            </div>
+            <button class="ghost-btn full" data-jump="steps">Track steps →</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Weight</h2></div>
+            <div class="big-stat"><span id="dashWeight">—</span><small id="dashWeightUnit">kg</small></div>
+            <div class="muted" id="dashWeightDelta">Log your first weigh-in →</div>
+            <button class="ghost-btn full" data-jump="weight">Update weight</button>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h2>This Week</h2></div>
+            <div class="week-strip" id="weekStrip"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STEPS ================= -->
+      <section class="view" id="view-steps">
+        <div class="grid">
+          <div class="card span-2 steps-hero">
+            <div class="card-head">
+              <h2>Today's Steps</h2>
+              <span class="balance-pill" id="stepStatusPill">Keep moving</span>
+            </div>
+            <div class="ring-wrap big">
+              <svg class="ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52" />
+                <circle class="ring-fg" id="stepRingBig" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="ring-center">
+                <div class="ring-val" id="stepsBig">0</div>
+                <div class="ring-sub" id="stepsGoalBig">of 8,000 steps</div>
+              </div>
+            </div>
+            <div class="step-stats">
+              <div class="step-stat"><div class="ss-val" id="stepKcal">0</div><div class="ss-lbl">kcal burned 🔥</div></div>
+              <div class="step-stat"><div class="ss-val" id="stepKm">0.0</div><div class="ss-lbl">km walked 📏</div></div>
+              <div class="step-stat"><div class="ss-val" id="stepPct">0%</div><div class="ss-lbl">of goal 🎯</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Auto Step Counter</h2></div>
+            <p class="muted" id="autoStepHint">Uses your phone's motion sensor to count steps while Dream is open.</p>
+            <div class="auto-step-box">
+              <div class="auto-step-status" id="autoStepStatus">Off</div>
+              <button class="primary-btn full" id="autoStepBtn">▶ Start auto-count</button>
+            </div>
+            <label class="fld" style="margin-top:14px"><span>Add steps manually</span>
+              <div class="two">
+                <input id="manualSteps" type="number" inputmode="numeric" placeholder="e.g. 2000" />
+                <button class="ghost-btn" id="addStepsBtn">+ Add</button>
+              </div>
+            </label>
+            <button class="ghost-btn full" id="setStepsBtn">Set exact total for today</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Daily Step Goal</h2></div>
+            <label class="fld"><span>My goal (steps per day)</span>
+              <input id="stepGoalInput" type="number" inputmode="numeric" placeholder="8000" />
+            </label>
+            <button class="primary-btn full" id="saveStepGoal">Save goal</button>
+            <div class="quick-goals">
+              <button class="chip" data-goal="5000">5k</button>
+              <button class="chip" data-goal="8000">8k</button>
+              <button class="chip" data-goal="10000">10k</button>
+              <button class="chip" data-goal="12000">12k</button>
+              <button class="chip" data-goal="15000">15k</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Reminders 🔔</h2></div>
+            <p class="muted">Get a nudge if you haven't hit your step goal, and a celebration when you do.</p>
+            <button class="primary-btn full" id="enableNotifBtn">Enable notifications</button>
+            <div class="calc-out" style="margin-top:12px">
+              <div class="calc-row"><span>Status</span><b id="notifStatus">Not enabled</b></div>
+            </div>
+            <button class="ghost-btn full" id="testNotifBtn">Send a test notification</button>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h2>Steps This Week</h2></div>
+            <div class="chart" id="stepChart"></div>
+            <div class="muted" id="stepWeekAvg">No step data yet this week.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= LEAGUE / LEADERBOARD ================= -->
+      <section class="view" id="view-league">
+        <!-- State 1: backend not configured -->
+        <div class="card" id="leagueSetup" style="display:none">
+          <div class="card-head"><h2>Set up your free leaderboard 🏆</h2></div>
+          <p class="muted">To play with friends you need a free Supabase project (no credit card). It takes ~10 minutes — full steps are in <b>README.md</b>. Once done, paste your keys into <code>supabase-config.js</code> and reload.</p>
+          <ol class="setup-list">
+            <li>Create a free project at <b>supabase.com</b></li>
+            <li>Run the SQL from README to make the <code>daily_stats</code> table</li>
+            <li>Copy your <b>Project URL</b> and <b>anon key</b> into <code>supabase-config.js</code></li>
+            <li>Reload Dream — this screen becomes the leaderboard</li>
+          </ol>
+          <div class="calc-out"><div class="calc-row"><span>Backend status</span><b id="leagueBackendStatus">Not configured</b></div></div>
+        </div>
+
+        <!-- State 2: configured, not in a league -->
+        <div class="card" id="leagueJoin" style="display:none">
+          <div class="card-head"><h2>Join the challenge 🏆</h2></div>
+          <p class="muted">Compete with your friends: earn points every day you hit your step goal and gym.</p>
+          <label class="fld"><span>Your display name</span><input id="leagueName" placeholder="e.g. Varun" maxlength="20" /></label>
+          <div class="league-actions">
+            <div class="league-col">
+              <h3>Create a league</h3>
+              <p class="muted">Make a new league and share the code with friends.</p>
+              <button class="primary-btn full" id="createLeagueBtn">+ Create league</button>
+            </div>
+            <div class="league-or">or</div>
+            <div class="league-col">
+              <h3>Join a league</h3>
+              <label class="fld"><span>League code</span><input id="joinCode" placeholder="e.g. DREAM42" maxlength="10" style="text-transform:uppercase" /></label>
+              <button class="ghost-btn full" id="joinLeagueBtn">Join</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- State 3: in a league -->
+        <div id="leagueBoard" style="display:none">
+          <div class="reminder-banner">
+            <div class="reminder-icon">🏆</div>
+            <div class="reminder-text">
+              <strong>League code: <span id="leagueCodeLabel">—</span></strong>
+              <span>Share this code so friends can join. Today: <b id="myTodayStatus">—</b></span>
+            </div>
+            <button class="ghost-btn" id="shareLeagueBtn">Share</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Leaderboard</h2>
+              <button class="ghost-btn" id="refreshBoardBtn">↻ Refresh</button>
+            </div>
+            <ul class="board-list" id="boardList"><li class="log-empty">Loading…</li></ul>
+            <div class="board-legend muted">+10 hitting step goal · +5 gym · +5 both-day bonus 🔥</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>League settings</h2></div>
+            <div class="calc-out">
+              <div class="calc-row"><span>You</span><b id="leagueMyName">—</b></div>
+              <div class="calc-row"><span>Players</span><b id="leaguePlayerCount">—</b></div>
+              <div class="calc-row"><span>Sync</span><b id="leagueSyncStatus">—</b></div>
+            </div>
+            <button class="ghost-btn full" id="syncNowBtn">Sync my stats now</button>
+            <button class="danger-btn full" id="leaveLeagueBtn">Leave league</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CALENDAR ================= -->
+      <section class="view" id="view-calendar">
+        <div class="card">
+          <div class="cal-head">
+            <button class="ghost-btn" id="prevMonth">‹</button>
+            <h2 id="calMonthLabel"></h2>
+            <button class="ghost-btn" id="nextMonth">›</button>
+          </div>
+          <div class="cal-grid cal-dow">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+          <div class="cal-grid" id="calDays"></div>
+          <div class="legend">
+            <span><i class="lg gym"></i> Gym done</span>
+            <span><i class="lg partial"></i> Some goals</span>
+            <span><i class="lg miss"></i> Missed</span>
+            <span><i class="lg today"></i> Today</span>
+          </div>
+        </div>
+
+        <div class="card" id="dayDetail">
+          <div class="card-head"><h2 id="dayDetailTitle">Select a day</h2></div>
+          <div id="dayDetailBody" class="muted">Click any day on the calendar to see and edit that day's goals.</div>
+        </div>
+      </section>
+
+      <!-- ================= NUTRITION ================= -->
+      <section class="view" id="view-nutrition">
+        <div class="grid">
+          <div class="card">
+            <div class="card-head"><h2>Calorie Goal Calculator</h2></div>
+            <p class="muted">Based on your profile we estimate how many calories you need.</p>
+            <div class="calc-out">
+              <div class="calc-row"><span>BMR (resting burn)</span><b id="bmrOut">—</b></div>
+              <div class="calc-row"><span>TDEE (daily burn)</span><b id="tdeeOut">—</b></div>
+              <div class="calc-row highlight"><span id="goalCalLabel">Target intake</span><b id="targetCalOut">—</b></div>
+              <div class="calc-row"><span>Protein target</span><b id="proteinTargetOut">—</b></div>
+            </div>
+            <button class="ghost-btn full" data-jump="profile">Edit profile to refine →</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Log Calories In</h2></div>
+            <label class="fld"><span>Food / meal</span><input id="calInName" placeholder="e.g. Chicken &amp; rice" /></label>
+            <div class="two">
+              <label class="fld"><span>Calories (kcal)</span><input id="calInKcal" type="number" inputmode="numeric" placeholder="0" /></label>
+              <label class="fld"><span>Protein (g)</span><input id="calInPro" type="number" inputmode="numeric" placeholder="0" /></label>
+            </div>
+            <button class="primary-btn full" id="addCalIn">+ Add food</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Log Calories Burned</h2></div>
+            <label class="fld"><span>Activity</span><input id="calOutName" placeholder="e.g. Gym / running" /></label>
+            <label class="fld"><span>Calories burned (kcal)</span><input id="calOutKcal" type="number" inputmode="numeric" placeholder="0" /></label>
+            <button class="primary-btn full" id="addCalOut">+ Add burn</button>
+            <button class="ghost-btn full" id="estBurnBtn">Estimate burn from activity ⚡</button>
+          </div>
+
+          <div class="card span-3">
+            <div class="card-head">
+              <h2>Today's Energy Balance</h2>
+              <span class="balance-pill" id="balancePill">—</span>
+            </div>
+            <div class="balance-bars">
+              <div class="bbar"><span>In</span><div class="bbar-track"><div class="bbar-fill in" id="barIn"></div></div><b id="barInVal">0</b></div>
+              <div class="bbar"><span>Out</span><div class="bbar-track"><div class="bbar-fill out" id="barOut"></div></div><b id="barOutVal">0</b></div>
+              <div class="bbar"><span>Protein</span><div class="bbar-track"><div class="bbar-fill pro" id="barPro"></div></div><b id="barProVal">0g</b></div>
+            </div>
+            <div class="log-cols">
+              <div>
+                <h3>Food log</h3>
+                <ul class="log-list" id="foodLog"></ul>
+              </div>
+              <div>
+                <h3>Burn log</h3>
+                <ul class="log-list" id="burnLog"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= WEIGHT ================= -->
+      <section class="view" id="view-weight">
+        <div class="grid">
+          <div class="card">
+            <div class="card-head"><h2>Log Weight</h2></div>
+            <label class="fld"><span>Current weight</span>
+              <div class="input-unit">
+                <input id="weightInput" type="number" inputmode="decimal" placeholder="0" />
+                <span id="weightUnitLabel">kg</span>
+              </div>
+            </label>
+            <button class="primary-btn full" id="logWeight">Save weigh-in</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Body Stats</h2></div>
+            <div class="calc-out">
+              <div class="calc-row"><span>BMI</span><b id="bmiOut">—</b></div>
+              <div class="calc-row"><span>Category</span><b id="bmiCat">—</b></div>
+              <div class="calc-row"><span>Healthy range</span><b id="healthyRange">—</b></div>
+              <div class="calc-row highlight"><span>To goal weight</span><b id="toGoal">—</b></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Progress</h2></div>
+            <div class="big-stat"><span id="curWeightBig">—</span><small id="curWeightUnit">kg</small></div>
+            <div class="muted" id="weightTrend">No data yet</div>
+          </div>
+
+          <div class="card span-3">
+            <div class="card-head"><h2>Weight History</h2></div>
+            <div class="chart" id="weightChart"></div>
+            <ul class="log-list" id="weightLog"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PROFILE ================= -->
+      <section class="view" id="view-profile">
+        <div class="card">
+          <div class="card-head"><h2>Your Profile</h2></div>
+          <p class="muted">We use this to calculate your calorie needs, protein target and healthy weight.</p>
+          <div class="two">
+            <label class="fld"><span>Name</span><input id="pName" placeholder="Champ" /></label>
+            <label class="fld"><span>Age</span><input id="pAge" type="number" placeholder="25" /></label>
+          </div>
+          <div class="two">
+            <label class="fld"><span>Sex</span>
+              <select id="pSex"><option value="male">Male</option><option value="female">Female</option></select>
+            </label>
+            <label class="fld"><span>Units</span>
+              <select id="pUnits"><option value="metric">Metric (kg, cm)</option><option value="imperial">Imperial (lb, in)</option></select>
+            </label>
+          </div>
+          <div class="two">
+            <label class="fld"><span>Height (<span class="u-len">cm</span>)</span><input id="pHeight" type="number" placeholder="175" /></label>
+            <label class="fld"><span>Goal weight (<span class="u-wt">kg</span>)</span><input id="pGoalWeight" type="number" placeholder="70" /></label>
+          </div>
+          <div class="two">
+            <label class="fld"><span>Activity level</span>
+              <select id="pActivity">
+                <option value="1.2">Sedentary (desk job)</option>
+                <option value="1.375">Light (1–3 workouts/wk)</option>
+                <option value="1.55" selected>Moderate (3–5 workouts/wk)</option>
+                <option value="1.725">Very active (6–7 workouts/wk)</option>
+                <option value="1.9">Athlete (2x/day)</option>
+              </select>
+            </label>
+            <label class="fld"><span>Fitness goal</span>
+              <select id="pGoal">
+                <option value="cut">Lose fat (cut)</option>
+                <option value="maintain">Maintain</option>
+                <option value="bulk">Build muscle (bulk)</option>
+              </select>
+            </label>
+          </div>
+          <button class="primary-btn full" id="saveProfile">Save profile</button>
+          <button class="danger-btn full" id="resetAll">Reset all data</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Goal add modal -->
+  <div class="modal-backdrop" id="goalModal">
+    <div class="modal">
+      <h3>Add a goal</h3>
+      <label class="fld"><span>Goal</span><input id="goalInput" placeholder="e.g. Go to the gym" /></label>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="goalCancel">Cancel</button>
+        <button class="primary-btn" id="goalSave">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase client (only used for the friends leaderboard) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Register service worker so Dream works offline and is installable.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err =>
+          console.warn('Service worker registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
