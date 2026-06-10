@@ -1,5 +1,5 @@
 /* Dream service worker — offline caching of the app shell. */
-const CACHE = 'dream-v5';
+const CACHE = 'dream-v6';
 const ASSETS = [
   './',
   './index.html',

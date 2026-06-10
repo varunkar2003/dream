@@ -463,3 +463,50 @@ body {
 .qr-wrap img { width: 190px; height: 190px; display: block; }
 #shareLink { font-size: 13px; color: var(--muted); }
 .modal-actions { flex-wrap: wrap; }
+
+/* ============================================================
+   Dashboard share card
+   ============================================================ */
+.share-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.share-card h2 { font-size: 16px; }
+
+/* ============================================================
+   Food search
+   ============================================================ */
+.food-search { width: 100%; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; color: var(--text); font: inherit; font-size: 14px; margin-bottom: 10px; }
+.food-search:focus { outline: none; border-color: var(--accent-2); }
+
+/* ============================================================
+   Habits — water / sleep / mood
+   ============================================================ */
+.water-btns, .chip-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.chip-row { justify-content: flex-start; margin-top: 10px; }
+.chip.active { border-color: var(--accent); color: var(--accent); background: rgba(74,222,128,.08); }
+.mood-row { display: flex; justify-content: space-between; gap: 6px; margin: 8px 0 12px; }
+.mood-btn { flex: 1; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 0; font-size: 26px; cursor: pointer; transition: .15s; }
+.mood-btn:hover { transform: translateY(-2px); border-color: var(--accent-2); }
+.mood-btn.active { border-color: var(--accent); background: rgba(74,222,128,.12); transform: translateY(-2px); }
+.chart-bar.goal-hit { background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+
+/* ============================================================
+   Body — measurements + photos
+   ============================================================ */
+.measure-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 8px; }
+.measure-grid .fld { margin-bottom: 0; }
+#measureCompare small { font-weight: 600; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 8px; }
+.photo-card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.photo-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+.photo-meta { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.photo-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.photo-del:hover { color: var(--danger); }
+
+/* ============================================================
+   Backup box
+   ============================================================ */
+.backup-box { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 12px 0; }
+.backup-box .two { margin-top: 10px; }
+
+@media (max-width: 900px) {
+  .measure-grid { grid-template-columns: repeat(2, 1fr); }
+}

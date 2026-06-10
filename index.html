@@ -33,7 +33,9 @@
         <button class="nav-btn" data-view="workouts"><span>🏋️</span> Workouts</button>
         <button class="nav-btn" data-view="steps"><span>👟</span> Steps</button>
         <button class="nav-btn" data-view="nutrition"><span>🍗</span> Calories &amp; Protein</button>
+        <button class="nav-btn" data-view="habits"><span>💧</span> Habits</button>
         <button class="nav-btn" data-view="weight"><span>⚖️</span> Weight</button>
+        <button class="nav-btn" data-view="body"><span>📏</span> Body</button>
         <button class="nav-btn" data-view="achievements"><span>🏅</span> Achievements</button>
         <button class="nav-btn" data-view="league"><span>🏆</span> League</button>
         <button class="nav-btn" data-view="calendar"><span>📅</span> Calendar</button>
@@ -132,6 +134,14 @@
           <div class="card span-2">
             <div class="card-head"><h2>This Week</h2></div>
             <div class="week-strip" id="weekStrip"></div>
+          </div>
+
+          <div class="card share-card">
+            <div>
+              <h2>Bring a friend 👯</h2>
+              <p class="muted">Train together — share Dream.</p>
+            </div>
+            <button class="primary-btn" id="dashShareBtn">📤 Share</button>
           </div>
         </div>
       </section>
@@ -405,6 +415,7 @@
             </div>
             <button class="primary-btn full" id="addCalIn">+ Add food</button>
             <div class="quick-food-head">⚡ Quick add common foods</div>
+            <input id="foodSearch" class="food-search" placeholder="🔍 Search foods…" />
             <div class="quick-food" id="quickFood"></div>
           </div>
 
@@ -478,6 +489,83 @@
         </div>
       </section>
 
+      <!-- ================= HABITS (water / sleep / mood) ================= -->
+      <section class="view" id="view-habits">
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-head"><h2>Water Intake 💧</h2><span class="balance-pill" id="waterPill">0 / 3.0 L</span></div>
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52" />
+                <circle class="ring-fg" id="waterRing" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="ring-center">
+                <div class="ring-val" id="waterVal">0</div>
+                <div class="ring-sub">ml today</div>
+              </div>
+            </div>
+            <div class="water-btns">
+              <button class="chip" data-water="250">+250 ml</button>
+              <button class="chip" data-water="500">+ Glass (500)</button>
+              <button class="chip" data-water="1000">+1 L</button>
+              <button class="chip" data-water="-250">− 250</button>
+            </div>
+            <label class="fld" style="margin-top:14px"><span>Daily water goal (ml)</span>
+              <div class="two">
+                <input id="waterGoalInput" type="number" inputmode="numeric" placeholder="3000" />
+                <button class="ghost-btn" id="saveWaterGoal">Save goal</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Sleep 😴</h2></div>
+            <div class="big-stat"><span id="sleepVal">—</span><small>h</small></div>
+            <p class="muted">How many hours did you sleep?</p>
+            <div class="chip-row" id="sleepBtns"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Mood 🙂</h2></div>
+            <div class="mood-row" id="moodRow"></div>
+            <div class="muted" id="moodLabel">How do you feel today?</div>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h2>Water This Week</h2></div>
+            <div class="chart" id="waterChart"></div>
+            <div class="muted" id="habitWeekNote">Log water to see your week.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BODY (measurements + photos) ================= -->
+      <section class="view" id="view-body">
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-head"><h2>Body Measurements 📏</h2></div>
+            <div class="measure-grid" id="measureInputs"></div>
+            <button class="primary-btn full" id="saveMeasure">Save today's measurements</button>
+            <p class="muted">Leave blank what you don't measure — placeholders show your latest values.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Change since start</h2></div>
+            <div class="calc-out" id="measureCompare"><div class="log-empty">No measurements yet.</div></div>
+          </div>
+
+          <div class="card span-3">
+            <div class="card-head">
+              <h2>Progress Photos 📸</h2>
+              <button class="ghost-btn" id="addPhotoBtn">+ Add photo</button>
+            </div>
+            <input type="file" id="photoFile" accept="image/*" hidden />
+            <p class="muted">🔒 Photos stay private on this device only — they are never uploaded anywhere.</p>
+            <div class="photo-grid" id="photoGrid"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= ACHIEVEMENTS ================= -->
       <section class="view" id="view-achievements">
         <div class="reminder-banner">
@@ -533,6 +621,17 @@
             </label>
           </div>
           <button class="primary-btn full" id="saveProfile">Save profile</button>
+
+          <div class="backup-box">
+            <div class="quick-food-head">💾 Backup &amp; restore</div>
+            <p class="muted">Save all your data to a file, or restore it on another phone.</p>
+            <div class="two">
+              <button class="ghost-btn" id="exportBtn">⬇ Export backup</button>
+              <button class="ghost-btn" id="importBtn">⬆ Import backup</button>
+            </div>
+            <input type="file" id="importFile" accept="application/json" hidden />
+          </div>
+
           <button class="danger-btn full" id="resetAll">Reset all data</button>
         </div>
       </section>

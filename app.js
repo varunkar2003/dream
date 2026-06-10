@@ -15,7 +15,10 @@ const defaultState = () => ({
   days: {},
   weights: [],            // [{date, kg}]
   stepGoal: 8000,         // daily step target
+  waterGoalMl: 3000,      // daily water target (ml)
   workouts: [],           // [{id, date, name, exercises:[{name, sets:[{reps, weight}]}]}]
+  measurements: [],       // [{date, parts:{waist, chest, ...}}] stored in cm
+  photos: [],             // [{id, date, data(base64), weightKg}]
   achievements: {},       // { badgeId: 'YYYY-MM-DD' (date unlocked) }
   theme: 'dark',          // 'dark' | 'light'
   social: { name: '', leagueCode: '', playerId: '' }, // friends leaderboard
@@ -32,9 +35,11 @@ function load() {
   return defaultState();
 }
 function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch (e) { console.warn('Could not save (storage full?):', e); return false; }
   // Push today's stats to the friends leaderboard (debounced, no-op if not in a league)
   if (window.Social && window.Social.onSave) window.Social.onSave();
+  return true;
 }
 
 /* ---------- Date helpers ---------- */
@@ -748,6 +753,8 @@ function showView(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'workouts') renderWorkouts();
   if (name === 'steps') renderSteps();
+  if (name === 'habits') renderHabits();
+  if (name === 'body') renderBody();
   if (name === 'achievements') renderAchievements();
   if (name === 'league' && window.Social) Social.renderView();
   if (name === 'calendar') { renderCalendar(); renderDayDetail(); }
@@ -1510,27 +1517,68 @@ function beep() {
    Quick-add common foods
    ============================================================ */
 const QUICK_FOODS = [
+  // Eggs & dairy
   { name: 'Egg (1 large)', kcal: 78, protein: 6 },
   { name: '2 Eggs', kcal: 156, protein: 12 },
-  { name: 'Chicken breast 100g', kcal: 165, protein: 31 },
-  { name: 'Rice 1 cup', kcal: 205, protein: 4 },
-  { name: 'Oats 50g', kcal: 190, protein: 7 },
-  { name: 'Banana', kcal: 105, protein: 1 },
-  { name: 'Greek yogurt 170g', kcal: 100, protein: 17 },
-  { name: 'Whey scoop', kcal: 120, protein: 24 },
-  { name: 'Paneer 100g', kcal: 265, protein: 18 },
-  { name: 'Dal 1 cup', kcal: 230, protein: 18 },
-  { name: 'Roti', kcal: 120, protein: 3 },
+  { name: 'Egg whites (3)', kcal: 51, protein: 11 },
   { name: 'Milk 1 cup', kcal: 150, protein: 8 },
+  { name: 'Greek yogurt 170g', kcal: 100, protein: 17 },
+  { name: 'Curd 1 cup', kcal: 98, protein: 8 },
+  { name: 'Cheese slice', kcal: 70, protein: 4 },
+  { name: 'Paneer 100g', kcal: 265, protein: 18 },
+  { name: 'Cottage cheese 100g', kcal: 98, protein: 11 },
+  // Meat & fish
+  { name: 'Chicken breast 100g', kcal: 165, protein: 31 },
+  { name: 'Chicken thigh 100g', kcal: 209, protein: 26 },
+  { name: 'Tuna can', kcal: 120, protein: 26 },
+  { name: 'Salmon 100g', kcal: 208, protein: 20 },
+  { name: 'Fish 100g', kcal: 140, protein: 22 },
+  { name: 'Egg curry serving', kcal: 220, protein: 12 },
+  { name: 'Mutton 100g', kcal: 250, protein: 25 },
+  { name: 'Prawns 100g', kcal: 99, protein: 24 },
+  // Carbs / grains
+  { name: 'Rice 1 cup', kcal: 205, protein: 4 },
+  { name: 'Brown rice 1 cup', kcal: 215, protein: 5 },
+  { name: 'Roti / chapati', kcal: 120, protein: 3 },
+  { name: 'Bread slice', kcal: 80, protein: 3 },
+  { name: 'Oats 50g', kcal: 190, protein: 7 },
+  { name: 'Pasta 1 cup', kcal: 220, protein: 8 },
+  { name: 'Poha plate', kcal: 270, protein: 5 },
+  { name: 'Idli (2)', kcal: 140, protein: 4 },
+  { name: 'Dosa', kcal: 168, protein: 4 },
+  { name: 'Potato (boiled)', kcal: 130, protein: 3 },
+  { name: 'Sweet potato', kcal: 112, protein: 2 },
+  // Legumes / veg
+  { name: 'Dal 1 cup', kcal: 230, protein: 18 },
+  { name: 'Rajma 1 cup', kcal: 215, protein: 13 },
+  { name: 'Chickpeas 1 cup', kcal: 269, protein: 15 },
+  { name: 'Tofu 100g', kcal: 144, protein: 17 },
+  { name: 'Soya chunks 50g', kcal: 173, protein: 26 },
+  { name: 'Mixed veg sabzi', kcal: 150, protein: 5 },
+  { name: 'Salad bowl', kcal: 80, protein: 3 },
+  // Snacks / fats / fruit
+  { name: 'Banana', kcal: 105, protein: 1 },
+  { name: 'Apple', kcal: 95, protein: 0 },
+  { name: 'Whey scoop', kcal: 120, protein: 24 },
   { name: 'Peanut butter 1 tbsp', kcal: 95, protein: 4 },
   { name: 'Almonds 30g', kcal: 175, protein: 6 },
-  { name: 'Tuna can', kcal: 120, protein: 26 }
+  { name: 'Peanuts 30g', kcal: 170, protein: 7 },
+  { name: 'Protein bar', kcal: 200, protein: 20 },
+  { name: 'Dark chocolate 30g', kcal: 170, protein: 2 },
+  { name: 'Coffee w/ milk', kcal: 60, protein: 3 }
 ];
+let foodFilter = '';
 function renderQuickFood() {
   const box = el('quickFood');
   if (!box) return;
   box.innerHTML = '';
-  QUICK_FOODS.forEach(f => {
+  const q = foodFilter.trim().toLowerCase();
+  const list = QUICK_FOODS.filter(f => !q || f.name.toLowerCase().includes(q));
+  if (!list.length) {
+    box.innerHTML = '<div class="log-empty">No match — type the food &amp; calories above to add it manually.</div>';
+    return;
+  }
+  list.forEach(f => {
     const b = document.createElement('button');
     b.className = 'food-chip';
     b.innerHTML = `${escapeHtml(f.name)}<small>${f.kcal} kcal · ${f.protein}g P</small>`;
@@ -1559,6 +1607,9 @@ const ACHIEVEMENTS = [
   { id: 'first_weigh',   icon: '⚖️', name: 'On the Scale',    desc: 'Log your weight',               test: () => state.weights.length >= 1 },
   { id: 'protein_goal',  icon: '🍗', name: 'Protein Packed',  desc: 'Hit your daily protein target', test: () => { const p = proteinTargetG(); return p && dayTotals(TODAY).protein >= p; } },
   { id: 'food_log',      icon: '🥗', name: 'Food Logger',     desc: 'Log food in a day',             test: () => Object.values(state.days).some(d => (d.food || []).length > 0) },
+  { id: 'hydrated',      icon: '💧', name: 'Hydrated',        desc: 'Hit your daily water goal',     test: () => waterOf(TODAY) >= (state.waterGoalMl || 3000) },
+  { id: 'photo1',        icon: '📸', name: 'Picture Day',     desc: 'Add a progress photo',          test: () => state.photos.length >= 1 },
+  { id: 'measured',      icon: '📐', name: 'Measured Up',     desc: 'Log body measurements',         test: () => state.measurements.length >= 1 },
   { id: 'all_goals',     icon: '✅', name: 'Perfect Day',     desc: 'Finish all of a day\'s goals',  test: () => Object.values(state.days).some(d => d.goals && d.goals.length && d.goals.every(g => g.done)) },
   { id: 'goal_weight',   icon: '🎯', name: 'Goal Crusher',    desc: 'Reach your goal weight',        test: () => { const w = latestWeightKg(); return w != null && state.profile.goalWeight && Math.abs(w - toKg(state.profile.goalWeight)) < 0.5; } }
 ];
@@ -1638,6 +1689,227 @@ el('nativeShareBtn').addEventListener('click', () => {
   if (navigator.share) navigator.share({ title: 'Dream — your gym buddy', text: 'Track gym, steps, calories & more with me on Dream!', url: APP_URL }).catch(() => {});
   else { el('shareLink').select(); document.execCommand('copy'); alert('Link copied — paste it to a friend!'); }
 });
+
+/* ============================================================
+   Habits — water, sleep, mood
+   ============================================================ */
+function waterOf(key) { return (state.days[key] && state.days[key].water) || 0; }
+function addWater(ml) {
+  const d = getDay(TODAY);
+  d.water = Math.max(0, (d.water || 0) + ml);
+  render(); renderHabits();
+}
+const MOODS = [
+  { v: 1, e: '😫', l: 'Drained' }, { v: 2, e: '😕', l: 'Meh' },
+  { v: 3, e: '😐', l: 'Okay' }, { v: 4, e: '🙂', l: 'Good' }, { v: 5, e: '😄', l: 'Great' }
+];
+function renderHabits() {
+  const goal = state.waterGoalMl || 3000;
+  const w = waterOf(TODAY);
+  el('waterVal').textContent = w;
+  el('waterPill').textContent = `${(w / 1000).toFixed(1)} / ${(goal / 1000).toFixed(1)} L`;
+  el('waterPill').className = 'balance-pill' + (w >= goal ? ' deficit' : '');
+  setRing('waterRing', w / goal, w >= goal ? 'var(--accent-2)' : 'var(--accent)');
+  el('waterGoalInput').value = goal;
+
+  const d = getDay(TODAY);
+  el('sleepVal').textContent = d.sleep ? d.sleep : '—';
+
+  // sleep chips 4–10h
+  const sb = el('sleepBtns'); sb.innerHTML = '';
+  for (let h = 4; h <= 10; h++) {
+    const b = document.createElement('button');
+    b.className = 'chip' + (d.sleep === h ? ' active' : '');
+    b.textContent = h + 'h';
+    b.addEventListener('click', () => { getDay(TODAY).sleep = h; save(); renderHabits(); });
+    sb.appendChild(b);
+  }
+  // mood
+  const mr = el('moodRow'); mr.innerHTML = '';
+  MOODS.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'mood-btn' + (d.mood === m.v ? ' active' : '');
+    b.textContent = m.e;
+    b.addEventListener('click', () => { getDay(TODAY).mood = m.v; save(); renderHabits(); });
+    mr.appendChild(b);
+  });
+  const sel = MOODS.find(m => m.v === d.mood);
+  el('moodLabel').textContent = sel ? sel.l + ' today' : 'How do you feel today?';
+
+  renderWaterChart();
+}
+function renderWaterChart() {
+  const chart = el('waterChart'); if (!chart) return;
+  chart.innerHTML = '';
+  const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay());
+  const goal = state.waterGoalMl || 3000;
+  let tot = 0, c = 0;
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(start); dt.setDate(start.getDate() + i);
+    const key = ymd(dt); const v = waterOf(key);
+    if (v > 0) { tot += v; c++; }
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar' + (v >= goal ? ' goal-hit' : '');
+    bar.style.height = Math.max(4, Math.min(100, v / goal * 100)) + '%';
+    bar.innerHTML = `<span>${(v / 1000).toFixed(1)}L</span>`;
+    bar.title = `${key}: ${v} ml`;
+    chart.appendChild(bar);
+  }
+  el('habitWeekNote').textContent = c ? `Average ${Math.round(tot / c).toLocaleString()} ml/day this week.` : 'Log water to see your week.';
+}
+
+/* ============================================================
+   Body — measurements + progress photos
+   ============================================================ */
+const fromCm = c => state.profile.units === 'imperial' ? c / 2.54 : c;
+const MEASURE_PARTS = [
+  { k: 'chest', label: 'Chest' }, { k: 'waist', label: 'Waist' }, { k: 'hips', label: 'Hips' },
+  { k: 'biceps', label: 'Biceps' }, { k: 'thighs', label: 'Thighs' }, { k: 'shoulders', label: 'Shoulders' },
+  { k: 'neck', label: 'Neck' }, { k: 'calves', label: 'Calves' }
+];
+function latestMeasure() { return state.measurements.length ? state.measurements[state.measurements.length - 1] : null; }
+function measureValue(entry, k) { return entry && entry.parts && entry.parts[k] != null ? entry.parts[k] : null; }
+
+function renderBody() { renderMeasureInputs(); renderMeasureCompare(); renderPhotos(); }
+
+function renderMeasureInputs() {
+  const box = el('measureInputs'); if (!box) return;
+  box.innerHTML = '';
+  const latest = latestMeasure();
+  MEASURE_PARTS.forEach(p => {
+    const v = measureValue(latest, p.k);
+    const wrap = document.createElement('label');
+    wrap.className = 'fld';
+    wrap.innerHTML = `<span>${p.label} (${lenUnit()})</span>
+      <input data-k="${p.k}" type="number" inputmode="decimal" placeholder="${v != null ? round1(fromCm(v)) : '—'}" />`;
+    box.appendChild(wrap);
+  });
+}
+function saveMeasurements() {
+  const parts = {}; let any = false;
+  el('measureInputs').querySelectorAll('input').forEach(inp => {
+    const val = +inp.value;
+    if (val > 0) { parts[inp.dataset.k] = toCm(val); any = true; }
+  });
+  if (!any) { alert('Enter at least one measurement.'); return; }
+  const latest = latestMeasure();
+  const merged = Object.assign({}, latest ? latest.parts : {}, parts);
+  state.measurements = state.measurements.filter(m => m.date !== TODAY);
+  state.measurements.push({ date: TODAY, parts: merged });
+  state.measurements.sort((a, b) => a.date.localeCompare(b.date));
+  save(); render(); renderBody();
+  flash(el('saveMeasure'), 'Saved ✓');
+}
+function renderMeasureCompare() {
+  const box = el('measureCompare'); if (!box) return;
+  if (!state.measurements.length) { box.innerHTML = '<div class="log-empty">No measurements yet.</div>'; return; }
+  const first = state.measurements[0], last = state.measurements[state.measurements.length - 1];
+  let html = '';
+  MEASURE_PARTS.forEach(p => {
+    const lv = measureValue(last, p.k);
+    if (lv == null) return;
+    const fv = measureValue(first, p.k);
+    let diffTxt = '';
+    if (fv != null) {
+      const diff = fromCm(lv - fv);
+      diffTxt = Math.abs(diff) < 0.1 ? '· same' : `${diff < 0 ? '▼' : '▲'} ${Math.abs(round1(diff))}`;
+    }
+    html += `<div class="calc-row"><span>${p.label}</span><b>${round1(fromCm(lv))} ${lenUnit()} <small class="muted">${diffTxt}</small></b></div>`;
+  });
+  box.innerHTML = html || '<div class="log-empty">No measurements yet.</div>';
+}
+
+function addPhotoFromFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 900;
+      let w = img.width, h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+      else if (h > max) { w = Math.round(w * max / h); h = max; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      let data;
+      try { data = canvas.toDataURL('image/jpeg', 0.7); } catch (e) { data = reader.result; }
+      state.photos.push({ id: uid(), date: TODAY, data, weightKg: latestWeightKg() });
+      if (!save()) { state.photos.pop(); alert('Storage is full — delete some photos before adding more.'); return; }
+      render(); renderPhotos();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function renderPhotos() {
+  const grid = el('photoGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  if (!state.photos.length) { grid.innerHTML = '<div class="log-empty">No photos yet — add your first progress pic!</div>'; return; }
+  [...state.photos].reverse().forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    const d = parseYmd(p.date);
+    const wt = p.weightKg != null ? ` · ${round1(fromKg(p.weightKg))}${wtUnit()}` : '';
+    card.innerHTML = `<img src="${p.data}" alt="progress photo" />
+      <div class="photo-meta"><span>${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}${wt}</span>
+      <button class="photo-del" title="Delete">✕</button></div>`;
+    card.querySelector('.photo-del').addEventListener('click', () => {
+      if (confirm('Delete this photo?')) { state.photos = state.photos.filter(x => x !== p); save(); render(); renderPhotos(); }
+    });
+    grid.appendChild(card);
+  });
+}
+
+/* ============================================================
+   Backup — export / import
+   ============================================================ */
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dream-backup-' + TODAY + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function importData(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let data;
+    try { data = JSON.parse(r.result); } catch (e) { alert('That file is not a valid Dream backup.'); return; }
+    if (!data || typeof data !== 'object' || !('days' in data)) { alert('That file is not a valid Dream backup.'); return; }
+    if (!confirm('This replaces your current data with the backup. Continue?')) return;
+    state = Object.assign(defaultState(), data);
+    save(); applyTheme(); render(); renderQuickFood(); showView('dashboard');
+    alert('Backup restored! 🎉');
+  };
+  r.readAsText(file);
+}
+
+/* ============================================================
+   Event wiring — habits, body, backup, dashboard share, food search
+   ============================================================ */
+document.querySelectorAll('.water-btns .chip').forEach(c =>
+  c.addEventListener('click', () => addWater(+c.dataset.water)));
+el('saveWaterGoal').addEventListener('click', () => {
+  const n = +el('waterGoalInput').value;
+  if (!n) return;
+  state.waterGoalMl = Math.round(n);
+  save(); renderHabits();
+  flash(el('saveWaterGoal'), 'Saved ✓');
+});
+
+el('saveMeasure').addEventListener('click', saveMeasurements);
+el('addPhotoBtn').addEventListener('click', () => el('photoFile').click());
+el('photoFile').addEventListener('change', e => { addPhotoFromFile(e.target.files[0]); e.target.value = ''; });
+
+el('exportBtn').addEventListener('click', exportData);
+el('importBtn').addEventListener('click', () => el('importFile').click());
+el('importFile').addEventListener('change', e => { importData(e.target.files[0]); e.target.value = ''; });
+
+el('dashShareBtn').addEventListener('click', openShare);
+el('foodSearch').addEventListener('input', e => { foodFilter = e.target.value; renderQuickFood(); });
 
 /* ============================================================
    Boot
