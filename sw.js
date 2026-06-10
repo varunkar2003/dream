@@ -1,5 +1,5 @@
 /* Dream service worker — offline caching of the app shell. */
-const CACHE = 'dream-v4';
+const CACHE = 'dream-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,10 @@ const ASSETS = [
   './app.js',
   './supabase-config.js',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
 ];
 
 self.addEventListener('install', e => {

@@ -30,17 +30,24 @@
 
       <nav class="nav">
         <button class="nav-btn active" data-view="dashboard"><span>🏠</span> Today</button>
+        <button class="nav-btn" data-view="workouts"><span>🏋️</span> Workouts</button>
         <button class="nav-btn" data-view="steps"><span>👟</span> Steps</button>
-        <button class="nav-btn" data-view="league"><span>🏆</span> League</button>
-        <button class="nav-btn" data-view="calendar"><span>📅</span> Calendar</button>
         <button class="nav-btn" data-view="nutrition"><span>🍗</span> Calories &amp; Protein</button>
         <button class="nav-btn" data-view="weight"><span>⚖️</span> Weight</button>
+        <button class="nav-btn" data-view="achievements"><span>🏅</span> Achievements</button>
+        <button class="nav-btn" data-view="league"><span>🏆</span> League</button>
+        <button class="nav-btn" data-view="calendar"><span>📅</span> Calendar</button>
         <button class="nav-btn" data-view="profile"><span>⚙️</span> Profile</button>
       </nav>
 
       <div class="streak-card">
         <div class="streak-num" id="streakNum">0</div>
         <div class="streak-label">day gym streak 🔥</div>
+      </div>
+
+      <div class="side-tools">
+        <button class="tool-btn" id="themeToggle" title="Switch light / dark">🌙</button>
+        <button class="tool-btn" id="shareAppBtn" title="Share / install app">📤 Share app</button>
       </div>
     </aside>
 
@@ -125,6 +132,55 @@
           <div class="card span-2">
             <div class="card-head"><h2>This Week</h2></div>
             <div class="week-strip" id="weekStrip"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= WORKOUTS ================= -->
+      <section class="view" id="view-workouts">
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-head">
+              <h2>Log a Workout 🏋️</h2>
+              <span class="balance-pill" id="workoutDatePill">Today</span>
+            </div>
+            <label class="fld"><span>Workout name (optional)</span>
+              <input id="workoutName" placeholder="e.g. Push day, Leg day" />
+            </label>
+
+            <div id="exerciseBuilder"></div>
+
+            <div class="add-ex-row">
+              <input id="newExName" placeholder="Add exercise, e.g. Bench press" maxlength="40" />
+              <button class="ghost-btn" id="addExBtn">+ Exercise</button>
+            </div>
+            <button class="primary-btn full" id="saveWorkoutBtn">💾 Save workout</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Rest Timer ⏱️</h2></div>
+            <div class="timer-display" id="timerDisplay">0:00</div>
+            <div class="timer-presets">
+              <button class="chip" data-rest="30">30s</button>
+              <button class="chip" data-rest="60">60s</button>
+              <button class="chip" data-rest="90">90s</button>
+              <button class="chip" data-rest="120">2m</button>
+              <button class="chip" data-rest="180">3m</button>
+            </div>
+            <div class="two">
+              <button class="primary-btn" id="timerStartBtn">▶ Start</button>
+              <button class="ghost-btn" id="timerResetBtn">Reset</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Personal Records 🏆</h2></div>
+            <ul class="log-list" id="prList"><li class="log-empty">Log a workout to set your first PR.</li></ul>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h2>Workout History</h2></div>
+            <ul class="workout-history" id="workoutHistory"></ul>
           </div>
         </div>
       </section>
@@ -348,6 +404,8 @@
               <label class="fld"><span>Protein (g)</span><input id="calInPro" type="number" inputmode="numeric" placeholder="0" /></label>
             </div>
             <button class="primary-btn full" id="addCalIn">+ Add food</button>
+            <div class="quick-food-head">⚡ Quick add common foods</div>
+            <div class="quick-food" id="quickFood"></div>
           </div>
 
           <div class="card">
@@ -420,6 +478,21 @@
         </div>
       </section>
 
+      <!-- ================= ACHIEVEMENTS ================= -->
+      <section class="view" id="view-achievements">
+        <div class="reminder-banner">
+          <div class="reminder-icon">🏅</div>
+          <div class="reminder-text">
+            <strong>Your trophy cabinet</strong>
+            <span id="achSummary">Keep training to unlock badges!</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Badges</h2></div>
+          <div class="badge-grid" id="badgeGrid"></div>
+        </div>
+      </section>
+
       <!-- ================= PROFILE ================= -->
       <section class="view" id="view-profile">
         <div class="card">
@@ -474,6 +547,21 @@
       <div class="modal-actions">
         <button class="ghost-btn" id="goalCancel">Cancel</button>
         <button class="primary-btn" id="goalSave">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share / install modal -->
+  <div class="modal-backdrop" id="shareModal">
+    <div class="modal">
+      <h3>Share Dream 📤</h3>
+      <p class="muted" style="margin-bottom:14px">Send friends this link — they can open it in any browser and add it to their home screen like a real app.</p>
+      <div class="qr-wrap"><img id="shareQr" alt="QR code to open Dream" /></div>
+      <label class="fld"><span>App link</span><input id="shareLink" readonly /></label>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="shareClose">Close</button>
+        <button class="ghost-btn" id="copyLinkBtn">Copy link</button>
+        <button class="primary-btn" id="nativeShareBtn">Share…</button>
       </div>
     </div>
   </div>

@@ -15,6 +15,9 @@ const defaultState = () => ({
   days: {},
   weights: [],            // [{date, kg}]
   stepGoal: 8000,         // daily step target
+  workouts: [],           // [{id, date, name, exercises:[{name, sets:[{reps, weight}]}]}]
+  achievements: {},       // { badgeId: 'YYYY-MM-DD' (date unlocked) }
+  theme: 'dark',          // 'dark' | 'light'
   social: { name: '', leagueCode: '', playerId: '' }, // friends leaderboard
   goalTemplate: ['Go to the gym 🏋️', 'Drink 3L of water 💧', 'Hit my protein target 🍗', '8h sleep 😴']
 });
@@ -200,6 +203,7 @@ function render() {
   renderDashboardWeight();
   renderWeekStrip();
   el('streakNum').textContent = gymStreak();
+  checkAchievements();
   save();
 }
 
@@ -742,7 +746,9 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   el('view-' + name).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if (name === 'workouts') renderWorkouts();
   if (name === 'steps') renderSteps();
+  if (name === 'achievements') renderAchievements();
   if (name === 'league' && window.Social) Social.renderView();
   if (name === 'calendar') { renderCalendar(); renderDayDetail(); }
   if (name === 'nutrition') renderNutrition();
@@ -1273,8 +1279,371 @@ window.Social = (function () {
 })();
 
 /* ============================================================
+   Theme (light / dark)
+   ============================================================ */
+function applyTheme() {
+  const t = state.theme === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = el('themeToggle');
+  if (btn) btn.textContent = t === 'light' ? '☀️ Light' : '🌙 Dark';
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content', t === 'light' ? '#f4f6fb' : '#0e1116');
+}
+function toggleTheme() {
+  state.theme = state.theme === 'light' ? 'dark' : 'light';
+  applyTheme(); save();
+}
+
+/* ============================================================
+   Workout logger + Personal Records
+   ============================================================ */
+let draftExercises = [];   // [{name, sets:[{reps, weight}]}]  (weight in display units while editing)
+let _uidSeq = 0;
+function uid() { return 'w_' + Math.random().toString(36).slice(2, 9) + (_uidSeq++); }
+
+// Best set ever for an exercise (by weight, tie-broken by reps). Weights stored in kg.
+function prFor(name) {
+  const key = (name || '').trim().toLowerCase();
+  let best = null;
+  state.workouts.forEach(w => (w.exercises || []).forEach(ex => {
+    if ((ex.name || '').trim().toLowerCase() !== key) return;
+    (ex.sets || []).forEach(s => {
+      if (!s.weightKg && !s.reps) return;
+      if (!best || s.weightKg > best.weightKg || (s.weightKg === best.weightKg && s.reps > best.reps))
+        best = { weightKg: s.weightKg || 0, reps: s.reps || 0 };
+    });
+  }));
+  return best;
+}
+function workoutVolumeKg(w) {
+  return (w.exercises || []).reduce((s, ex) =>
+    s + ex.sets.reduce((ss, st) => ss + (st.weightKg || 0) * (st.reps || 0), 0), 0);
+}
+
+function renderWorkouts() {
+  renderExerciseBuilder();
+  renderPRs();
+  renderWorkoutHistory();
+}
+
+function renderExerciseBuilder() {
+  const box = el('exerciseBuilder');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!draftExercises.length) {
+    box.innerHTML = '<div class="builder-empty">No exercises yet — add one below to start your workout.</div>';
+    return;
+  }
+  draftExercises.forEach((ex, ei) => {
+    const block = document.createElement('div');
+    block.className = 'ex-block';
+    const pr = prFor(ex.name);
+    block.innerHTML = `
+      <div class="ex-block-head">
+        <span class="ex-name">${escapeHtml(ex.name)}</span>
+        <span>${pr ? `<span class="ex-pr">PR ${round1(fromKg(pr.weightKg))}${wtUnit()}×${pr.reps}</span> ` : ''}<button class="ex-del" title="Remove exercise">✕</button></span>
+      </div>
+      <div class="set-head"><span>#</span><span>Reps</span><span>Weight (${wtUnit()})</span><span></span></div>
+      <div class="sets"></div>
+      <button class="add-set-btn">+ Add set</button>`;
+    const setsBox = block.querySelector('.sets');
+    ex.sets.forEach((st, si) => {
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      row.innerHTML = `<span class="set-n">${si + 1}</span>
+        <input type="number" inputmode="numeric" placeholder="reps" value="${st.reps || ''}" />
+        <input type="number" inputmode="decimal" placeholder="wt" value="${st.weight || ''}" />
+        <button class="set-x" title="Remove set">✕</button>`;
+      const inputs = row.querySelectorAll('input');
+      inputs[0].addEventListener('input', () => st.reps = +inputs[0].value || 0);
+      inputs[1].addEventListener('input', () => st.weight = +inputs[1].value || 0);
+      row.querySelector('.set-x').addEventListener('click', () => { ex.sets.splice(si, 1); renderExerciseBuilder(); });
+      setsBox.appendChild(row);
+    });
+    block.querySelector('.ex-del').addEventListener('click', () => { draftExercises.splice(ei, 1); renderExerciseBuilder(); });
+    block.querySelector('.add-set-btn').addEventListener('click', () => {
+      const last = ex.sets[ex.sets.length - 1];
+      ex.sets.push(last ? { reps: last.reps, weight: last.weight } : { reps: 0, weight: 0 });
+      renderExerciseBuilder();
+    });
+    box.appendChild(block);
+  });
+}
+
+function addDraftExercise() {
+  const name = (el('newExName').value || '').trim();
+  if (!name) { alert('Type an exercise name first.'); return; }
+  draftExercises.push({ name, sets: [{ reps: 0, weight: 0 }] });
+  el('newExName').value = '';
+  renderExerciseBuilder();
+}
+
+function markGymDone() {
+  const day = getDay(TODAY);
+  const g = day.goals.find(x => x.gym);
+  if (g) g.done = true;
+  else day.goals.push({ text: 'Go to the gym 🏋️', done: true, gym: true });
+}
+
+function saveWorkout() {
+  const exes = draftExercises.map(ex => ({
+    name: ex.name.trim(),
+    sets: ex.sets.filter(s => s.reps || s.weight)
+                 .map(s => ({ reps: +s.reps || 0, weightKg: toKg(+s.weight || 0) }))
+  })).filter(ex => ex.name && ex.sets.length);
+
+  if (!exes.length) { alert('Add at least one exercise with reps or weight before saving.'); return; }
+
+  // Detect new PRs (compare against history before we add this workout)
+  const prMsgs = [];
+  exes.forEach(ex => {
+    const old = prFor(ex.name);
+    const newMax = ex.sets.reduce((m, s) =>
+      (s.weightKg > m.weightKg || (s.weightKg === m.weightKg && s.reps > m.reps)) ? { weightKg: s.weightKg, reps: s.reps } : m,
+      { weightKg: 0, reps: 0 });
+    if (newMax.weightKg > 0 && (!old || newMax.weightKg > old.weightKg))
+      prMsgs.push(`${ex.name}: ${round1(fromKg(newMax.weightKg))}${wtUnit()} × ${newMax.reps}`);
+  });
+
+  state.workouts.push({ id: uid(), date: TODAY, name: (el('workoutName').value || '').trim() || 'Workout', exercises: exes });
+  markGymDone();
+  draftExercises = [];
+  el('workoutName').value = '';
+  save();
+  render();          // refresh streak, calendar status, achievements
+  renderWorkouts();
+
+  if (prMsgs.length) notify('🏆 New personal record!', prMsgs.join(' · '));
+  flash(el('saveWorkoutBtn'), prMsgs.length ? '🏆 PR saved!' : 'Saved ✓');
+}
+
+function renderPRs() {
+  const ul = el('prList');
+  if (!ul) return;
+  ul.innerHTML = '';
+  const names = [...new Set(state.workouts.flatMap(w => (w.exercises || []).map(e => e.name)))];
+  const prs = names.map(n => ({ n, pr: prFor(n) })).filter(x => x.pr);
+  if (!prs.length) { ul.innerHTML = '<li class="log-empty">Log a workout to set your first PR.</li>'; return; }
+  prs.sort((a, b) => b.pr.weightKg - a.pr.weightKg).forEach(x => {
+    const li = document.createElement('li');
+    li.className = 'log-item';
+    li.innerHTML = `<span class="li-name">${escapeHtml(x.n)}</span>
+      <span class="li-val">${round1(fromKg(x.pr.weightKg))} ${wtUnit()}</span>
+      <span class="li-sub">× ${x.pr.reps}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+function renderWorkoutHistory() {
+  const ul = el('workoutHistory');
+  if (!ul) return;
+  ul.innerHTML = '';
+  const list = [...state.workouts].reverse().slice(0, 15);
+  if (!list.length) { ul.innerHTML = '<li class="log-empty">No workouts logged yet.</li>'; return; }
+  list.forEach(w => {
+    const li = document.createElement('li');
+    li.className = 'wh-item';
+    const d = parseYmd(w.date);
+    const exSummary = (w.exercises || []).map(e => `${escapeHtml(e.name)} (${e.sets.length})`).join(', ');
+    const vol = Math.round(fromKg(workoutVolumeKg(w)));
+    li.innerHTML = `<div class="wh-top">
+        <span class="wh-title">${escapeHtml(w.name)}</span>
+        <span><span class="wh-date">${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+        <button class="wh-del" title="Delete">✕</button></span></div>
+      <div class="wh-ex">${exSummary || 'No exercises'} · <span class="wh-vol">${vol.toLocaleString()} ${wtUnit()} volume</span></div>`;
+    li.querySelector('.wh-del').addEventListener('click', () => {
+      if (confirm('Delete this workout?')) { state.workouts = state.workouts.filter(x => x !== w); save(); render(); renderWorkouts(); }
+    });
+    ul.appendChild(li);
+  });
+}
+
+/* ============================================================
+   Rest timer
+   ============================================================ */
+let timerState = { remaining: 0, total: 0, handle: null };
+function renderTimer() {
+  const m = Math.floor(Math.max(0, timerState.remaining) / 60);
+  const s = Math.max(0, timerState.remaining) % 60;
+  const d = el('timerDisplay');
+  if (d) d.textContent = `${m}:${String(s).padStart(2, '0')}`;
+}
+function startTimer() {
+  if (timerState.handle) { pauseTimer(); return; }
+  if (timerState.remaining <= 0) timerState.remaining = timerState.total || 60;
+  el('timerDisplay').classList.remove('ringing');
+  el('timerStartBtn').textContent = '⏸ Pause';
+  timerState.handle = setInterval(() => {
+    timerState.remaining--;
+    renderTimer();
+    if (timerState.remaining <= 0) { stopTimer(); timerDone(); }
+  }, 1000);
+}
+function pauseTimer() { stopTimer(); el('timerStartBtn').textContent = '▶ Start'; }
+function stopTimer() { if (timerState.handle) { clearInterval(timerState.handle); timerState.handle = null; } }
+function resetTimer() {
+  stopTimer();
+  timerState.remaining = timerState.total || 0;
+  renderTimer();
+  el('timerStartBtn').textContent = '▶ Start';
+  el('timerDisplay').classList.remove('ringing');
+}
+function timerDone() {
+  el('timerDisplay').classList.add('ringing');
+  el('timerStartBtn').textContent = '▶ Start';
+  notify('⏱️ Rest over!', 'Time for your next set 💪');
+  beep();
+}
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    o.start(); o.stop(ctx.currentTime + 0.6);
+  } catch (e) { /* audio not available */ }
+}
+
+/* ============================================================
+   Quick-add common foods
+   ============================================================ */
+const QUICK_FOODS = [
+  { name: 'Egg (1 large)', kcal: 78, protein: 6 },
+  { name: '2 Eggs', kcal: 156, protein: 12 },
+  { name: 'Chicken breast 100g', kcal: 165, protein: 31 },
+  { name: 'Rice 1 cup', kcal: 205, protein: 4 },
+  { name: 'Oats 50g', kcal: 190, protein: 7 },
+  { name: 'Banana', kcal: 105, protein: 1 },
+  { name: 'Greek yogurt 170g', kcal: 100, protein: 17 },
+  { name: 'Whey scoop', kcal: 120, protein: 24 },
+  { name: 'Paneer 100g', kcal: 265, protein: 18 },
+  { name: 'Dal 1 cup', kcal: 230, protein: 18 },
+  { name: 'Roti', kcal: 120, protein: 3 },
+  { name: 'Milk 1 cup', kcal: 150, protein: 8 },
+  { name: 'Peanut butter 1 tbsp', kcal: 95, protein: 4 },
+  { name: 'Almonds 30g', kcal: 175, protein: 6 },
+  { name: 'Tuna can', kcal: 120, protein: 26 }
+];
+function renderQuickFood() {
+  const box = el('quickFood');
+  if (!box) return;
+  box.innerHTML = '';
+  QUICK_FOODS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'food-chip';
+    b.innerHTML = `${escapeHtml(f.name)}<small>${f.kcal} kcal · ${f.protein}g P</small>`;
+    b.addEventListener('click', () => {
+      getDay(TODAY).food.push({ name: f.name, kcal: f.kcal, protein: f.protein });
+      render(); renderNutrition();
+      flash(b, 'Added ✓');
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ============================================================
+   Achievements & badges
+   ============================================================ */
+const ACHIEVEMENTS = [
+  { id: 'first_workout', icon: '🏋️', name: 'First Rep',       desc: 'Log your first workout',        test: () => state.workouts.length >= 1 },
+  { id: 'workouts_10',   icon: '💪', name: 'Committed',       desc: 'Log 10 workouts',               test: () => state.workouts.length >= 10 },
+  { id: 'workouts_50',   icon: '🦾', name: 'Iron Addict',     desc: 'Log 50 workouts',               test: () => state.workouts.length >= 50 },
+  { id: 'pr_set',        icon: '🏆', name: 'Record Breaker',  desc: 'Lift weight in a workout',      test: () => state.workouts.some(w => (w.exercises || []).some(e => e.sets.some(s => s.weightKg > 0))) },
+  { id: 'streak_3',      icon: '🔥', name: 'On a Roll',       desc: 'Reach a 3-day gym streak',      test: () => gymStreak() >= 3 },
+  { id: 'streak_7',      icon: '⚡', name: 'Week Warrior',    desc: 'Reach a 7-day gym streak',      test: () => gymStreak() >= 7 },
+  { id: 'streak_30',     icon: '🌟', name: 'Unstoppable',     desc: 'Reach a 30-day gym streak',     test: () => gymStreak() >= 30 },
+  { id: 'steps_10k',     icon: '👟', name: '10k Club',        desc: 'Hit 10,000 steps in one day',   test: () => Object.values(state.days).some(d => (d.steps || 0) >= 10000) },
+  { id: 'steps_100k',    icon: '🚶', name: 'Century Walker',  desc: 'Walk 100k steps total',         test: () => Object.values(state.days).reduce((s, d) => s + (d.steps || 0), 0) >= 100000 },
+  { id: 'first_weigh',   icon: '⚖️', name: 'On the Scale',    desc: 'Log your weight',               test: () => state.weights.length >= 1 },
+  { id: 'protein_goal',  icon: '🍗', name: 'Protein Packed',  desc: 'Hit your daily protein target', test: () => { const p = proteinTargetG(); return p && dayTotals(TODAY).protein >= p; } },
+  { id: 'food_log',      icon: '🥗', name: 'Food Logger',     desc: 'Log food in a day',             test: () => Object.values(state.days).some(d => (d.food || []).length > 0) },
+  { id: 'all_goals',     icon: '✅', name: 'Perfect Day',     desc: 'Finish all of a day\'s goals',  test: () => Object.values(state.days).some(d => d.goals && d.goals.length && d.goals.every(g => g.done)) },
+  { id: 'goal_weight',   icon: '🎯', name: 'Goal Crusher',    desc: 'Reach your goal weight',        test: () => { const w = latestWeightKg(); return w != null && state.profile.goalWeight && Math.abs(w - toKg(state.profile.goalWeight)) < 0.5; } }
+];
+function checkAchievements() {
+  const newly = [];
+  ACHIEVEMENTS.forEach(a => {
+    try { if (!state.achievements[a.id] && a.test()) { state.achievements[a.id] = TODAY; newly.push(a); } }
+    catch (e) { /* ignore */ }
+  });
+  if (newly.length) {
+    newly.forEach(a => notify('🏅 Achievement unlocked!', `${a.icon} ${a.name} — ${a.desc}`));
+    if (el('view-achievements') && el('view-achievements').classList.contains('active')) renderAchievements();
+  }
+}
+function renderAchievements() {
+  const grid = el('badgeGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  let unlocked = 0;
+  ACHIEVEMENTS.forEach(a => {
+    const got = !!state.achievements[a.id];
+    if (got) unlocked++;
+    const div = document.createElement('div');
+    div.className = 'badge ' + (got ? 'unlocked' : 'locked');
+    div.innerHTML = `${got ? '<span class="badge-tick">✅</span>' : ''}
+      <div class="badge-icon">${a.icon}</div>
+      <div class="badge-name">${a.name}</div>
+      <div class="badge-desc">${escapeHtml(a.desc)}</div>`;
+    grid.appendChild(div);
+  });
+  el('achSummary').textContent = `${unlocked} of ${ACHIEVEMENTS.length} badges unlocked — keep going! 💪`;
+}
+
+/* ============================================================
+   Share / install the app
+   ============================================================ */
+const APP_URL = 'https://varunkar2003.github.io/dream_gymbuddy/';
+function openShare() {
+  el('shareLink').value = APP_URL;
+  el('shareQr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=12&data=' + encodeURIComponent(APP_URL);
+  el('shareModal').classList.add('show');
+}
+
+/* ============================================================
+   Event wiring — new features
+   ============================================================ */
+el('themeToggle').addEventListener('click', toggleTheme);
+el('shareAppBtn').addEventListener('click', openShare);
+
+// Workouts
+el('addExBtn').addEventListener('click', addDraftExercise);
+el('newExName').addEventListener('keydown', e => { if (e.key === 'Enter') addDraftExercise(); });
+el('saveWorkoutBtn').addEventListener('click', saveWorkout);
+
+// Rest timer
+el('timerStartBtn').addEventListener('click', startTimer);
+el('timerResetBtn').addEventListener('click', resetTimer);
+document.querySelectorAll('.timer-presets .chip').forEach(c =>
+  c.addEventListener('click', () => {
+    stopTimer();
+    timerState.total = +c.dataset.rest;
+    timerState.remaining = timerState.total;
+    el('timerStartBtn').textContent = '▶ Start';
+    el('timerDisplay').classList.remove('ringing');
+    renderTimer();
+    document.querySelectorAll('.timer-presets .chip').forEach(x => x.classList.toggle('active', x === c));
+  }));
+
+// Share modal
+el('shareClose').addEventListener('click', () => el('shareModal').classList.remove('show'));
+el('shareModal').addEventListener('click', e => { if (e.target === el('shareModal')) el('shareModal').classList.remove('show'); });
+el('copyLinkBtn').addEventListener('click', () => {
+  if (navigator.clipboard) navigator.clipboard.writeText(APP_URL).then(() => flash(el('copyLinkBtn'), 'Copied ✓'));
+  else { el('shareLink').select(); document.execCommand('copy'); flash(el('copyLinkBtn'), 'Copied ✓'); }
+});
+el('nativeShareBtn').addEventListener('click', () => {
+  if (navigator.share) navigator.share({ title: 'Dream — your gym buddy', text: 'Track gym, steps, calories & more with me on Dream!', url: APP_URL }).catch(() => {});
+  else { el('shareLink').select(); document.execCommand('copy'); alert('Link copied — paste it to a friend!'); }
+});
+
+/* ============================================================
    Boot
    ============================================================ */
+applyTheme();
+renderQuickFood();
 render();
 showView('dashboard');
 maybeRemind();

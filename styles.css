@@ -353,3 +353,113 @@ body {
   .main { padding: 20px; }
   .log-cols { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   Light theme
+   ============================================================ */
+[data-theme="light"] {
+  --bg: #f4f6fb;
+  --bg-2: #ffffff;
+  --card: #ffffff;
+  --card-2: #eef2f8;
+  --line: #dce3ee;
+  --text: #1a2230;
+  --muted: #67748a;
+  --accent: #16a34a;
+  --accent-2: #0891b2;
+  --in: #16a34a;
+  --out: #ea7317;
+  --pro: #7c3aed;
+  --danger: #dc2626;
+  --shadow: 0 8px 24px rgba(40,60,90,.10);
+}
+[data-theme="light"] body {
+  background: radial-gradient(1200px 800px at 80% -10%, #e6edfa 0%, var(--bg) 55%);
+}
+[data-theme="light"] .brand-logo,
+[data-theme="light"] .progress-fill { color: #fff; }
+
+/* ============================================================
+   Sidebar tools (theme + share)
+   ============================================================ */
+.side-tools { display: flex; flex-direction: column; gap: 8px; }
+.tool-btn {
+  background: var(--card); border: 1px solid var(--line); color: var(--text);
+  font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+  padding: 10px 12px; border-radius: 10px; transition: .15s; text-align: center;
+}
+.tool-btn:hover { border-color: var(--accent-2); }
+
+/* ============================================================
+   Workout logger
+   ============================================================ */
+.add-ex-row, .add-task-row, .add-ex-set { display: flex; gap: 8px; margin: 12px 0; }
+.add-ex-row input { flex: 1; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; color: var(--text); font: inherit; }
+.add-ex-row input:focus { outline: none; border-color: var(--accent-2); }
+
+.ex-block { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+.ex-block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ex-block-head .ex-name { font-weight: 700; font-size: 15px; }
+.ex-block-head .ex-pr { font-size: 12px; color: var(--accent); font-weight: 600; }
+.ex-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+.ex-del:hover { color: var(--danger); }
+.set-row { display: grid; grid-template-columns: 28px 1fr 1fr 28px; align-items: center; gap: 8px; margin-bottom: 6px; }
+.set-row .set-n { font-size: 12px; color: var(--muted); text-align: center; }
+.set-row input { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--text); font: inherit; font-size: 14px; width: 100%; }
+.set-row input:focus { outline: none; border-color: var(--accent-2); }
+.set-row .set-x { background: none; border: none; color: var(--muted); cursor: pointer; }
+.set-row .set-x:hover { color: var(--danger); }
+.add-set-btn { background: none; border: 1px dashed var(--line); color: var(--muted); border-radius: 8px; padding: 7px; width: 100%; cursor: pointer; font: inherit; font-size: 13px; margin-top: 4px; }
+.add-set-btn:hover { border-color: var(--accent-2); color: var(--text); }
+.set-head { display: grid; grid-template-columns: 28px 1fr 1fr 28px; gap: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; padding: 0 2px; }
+.builder-empty { color: var(--muted); font-size: 14px; font-style: italic; padding: 14px 2px; text-align: center; }
+
+.workout-history { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.wh-item { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.wh-top { display: flex; justify-content: space-between; align-items: center; }
+.wh-title { font-weight: 700; }
+.wh-date { font-size: 12px; color: var(--muted); }
+.wh-ex { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.wh-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; margin-left: 8px; }
+.wh-del:hover { color: var(--danger); }
+.wh-vol { color: var(--accent); font-weight: 600; }
+
+/* ---------- Rest timer ---------- */
+.timer-display { font-size: 52px; font-weight: 800; text-align: center; letter-spacing: -1px; margin: 6px 0 12px; font-variant-numeric: tabular-nums; }
+.timer-display.ringing { color: var(--accent); animation: pulse .6s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .5; } to { opacity: 1; } }
+.timer-presets { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+
+/* ---------- Chips (shared) ---------- */
+.chip { background: var(--bg-2); border: 1px solid var(--line); color: var(--text); border-radius: 99px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
+.chip:hover, .chip.active { border-color: var(--accent-2); color: var(--accent-2); }
+.quick-goals { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ============================================================
+   Quick-add foods
+   ============================================================ */
+.quick-food-head { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
+.quick-food { display: flex; gap: 6px; flex-wrap: wrap; }
+.food-chip { background: var(--bg-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 8px 11px; font: inherit; font-size: 13px; cursor: pointer; transition: .15s; text-align: left; }
+.food-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
+.food-chip small { display: block; color: var(--muted); font-size: 11px; }
+
+/* ============================================================
+   Achievements
+   ============================================================ */
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.badge { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-align: center; transition: .2s; position: relative; }
+.badge.locked { opacity: .45; filter: grayscale(.8); }
+.badge.unlocked { border-color: rgba(74,222,128,.4); }
+.badge-icon { font-size: 38px; line-height: 1; }
+.badge-name { font-weight: 700; font-size: 14px; margin: 8px 0 4px; }
+.badge-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.badge-tick { position: absolute; top: 10px; right: 10px; font-size: 14px; }
+
+/* ============================================================
+   Share modal / QR
+   ============================================================ */
+.qr-wrap { display: grid; place-items: center; background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.qr-wrap img { width: 190px; height: 190px; display: block; }
+#shareLink { font-size: 13px; color: var(--muted); }
+.modal-actions { flex-wrap: wrap; }
